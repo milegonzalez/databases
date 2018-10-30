@@ -3,7 +3,7 @@ var db = require('../db/');
 module.exports = {
   messages: {
     get: function () {
-      const sql = 'select * from messages';
+      const sql = 'SELECT * FROM messages';
       const connection = db.connection;
       connection.query(sql, (error, results, fields) => {
         if (error) {
@@ -30,7 +30,7 @@ module.exports = {
   users: {
     // Ditto as above.
     get: function () {
-      const sql = 'select * from users';
+      const sql = 'SELECT * FROM users';
       const connection = db.connection;
       connection.query(sql, (error, results, fields) => {
         if (error) {
@@ -54,5 +54,5 @@ module.exports = {
   }
 };
 
-module.exports.users.get();
+// module.exports.users.get();
 // module.exports.users.post();
