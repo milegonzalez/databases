@@ -1,247 +1,235 @@
-/* APP OBJECT & PROTOTYPE CHAIN */
+var app = {
 
-const App = function() {
-  this.server = 'http://127.0.0.1:3000/classes/messages'; //added /classes/messages
-    // this.server = 'http://127.0.0.1:3000/classes/messages'
-    //'http://parse.rpt.hackreactor.com/chatterbox/classes/messages?order=-createdAt&limit=250';
-};
+  //TODO: The current 'handleUsernameClick' function just toggles the class 'friend'
+  //to all messages sent by the user
+  server: 'http://127.0.0.1:3000/classes/messages',
+  username: 'anonymous',
+  roomname: 'lobby',
+  lastMessageId: 0,
+  friends: {},
+  messages: [],
 
-App.prototype.init = function() {
-  $.ajax({
-    url: this.server,
-    type: `GET`,
-    error: function() {
-      $('#chats').html('<p>An error has occurred</p>');
-    },
-    dataType: 'json',
-    success: function(data) {
-      console.log(data);
-      let rooms = {};
-      for (var i = 0; i < data.results.length; i++) {
-        if (
-          !xssTest(data.results[i].text) &&
-          !xssTest(data.results[i].roomname) &&
-          !xssTest(data.results[i].username)
-        ) {
-          const roomClass = classFormatter(data.results[i].roomname);
-          const nameClass = classFormatter(data.results[i].username);
-          var $message = $(`<div class="chat ${roomClass} ${nameClass}">`)
-            .html(`<span class="username ${nameClass}">${
-              data.results[i].username
-            }:</span>
-              <span class="messageText">${data.results[i].text}</span>`);
-          if (!rooms[data.results[i].roomname]) {
-            rooms[data.results[i].roomname] = data.results[i].roomname;
-          }
+  init: function() {
+    // Get username
+    app.username = window.location.search.substr(10);
 
-          $('#chats').append($message);
+    // Cache jQuery selectors
+    app.$message = $('#message');
+    app.$chats = $('#chats');
+    app.$roomSelect = $('#roomSelect');
+    app.$send = $('#send');
+
+    // Add listeners
+    app.$chats.on('click', '.username', app.handleUsernameClick);
+    app.$send.on('submit', app.handleSubmit);
+    app.$roomSelect.on('change', app.handleRoomChange);
+
+    // Fetch previous messages
+    app.startSpinner();
+    app.fetch(false);
+
+    // Poll for new messages
+    setInterval(function() {
+      app.fetch(true);
+    }, 3000);
+  },
+
+  send: function(message) {
+    app.startSpinner();
+
+    // POST the message to the server
+    $.ajax({
+      url: app.server,
+      type: 'POST',
+      data: JSON.stringify(message),
+      contentType: 'application/json',
+      success: function (data) {
+        // Clear messages input
+        app.$message.val('');
+
+        // Trigger a fetch to update the messages, pass true to animate
+        app.fetch();
+      },
+      error: function (error) {
+        console.error('chatterbox: Failed to send message', error);
+      }
+    });
+  },
+
+  fetch: function(animate) {
+    $.ajax({
+      url: app.server,
+      type: 'GET',
+      // data: { order: '-createdAt' },
+      success: function(data) {
+        // Don't bother if we have nothing to work with
+        if (!data.results || !data.results.length) { return; }
+
+        // Store messages for caching later
+        app.messages = data.results;
+
+        // Get the last message
+        var mostRecentMessage = data.results[data.results.length - 1];
+
+        // Only bother updating the DOM if we have a new message
+        if (mostRecentMessage.objectId !== app.lastMessageId) {
+          // Update the UI with the fetched rooms
+          app.renderRoomList(data.results);
+
+          // Update the UI with the fetched messages
+          app.renderMessages(data.results, animate);
+
+          // Store the ID of the most recent message
+          app.lastMessageId = mostRecentMessage.objectId;
         }
+      },
+      error: function(error) {
+        console.error('chatterbox: Failed to fetch messages', error);
       }
+    });
+  },
 
-      for (var key in rooms) {
-        var $option = $(`<option>${rooms[key]}</option>`);
-        $('#roomSelect').append($option);
+  clearMessages: function() {
+    app.$chats.html('');
+  },
+
+  renderMessages: function(messages, animate) {
+    // Clear existing messages`
+    app.clearMessages();
+    app.stopSpinner();
+    if (Array.isArray(messages)) {
+      // Add all fetched messages that are in our current room
+      messages
+        .filter(function(message) {
+          return message.roomname === app.roomname ||
+                 app.roomname === 'lobby' && !message.roomname;
+        })
+        .forEach(app.renderMessage);
+    }
+
+    // Make it scroll to the top
+    if (animate) {
+      $('body').animate({scrollTop: '0px'}, 'fast');
+    }
+  },
+
+  renderRoomList: function(messages) {
+    app.$roomSelect.html('<option value="__newRoom">New room...</option>');
+
+    if (messages) {
+      var rooms = {};
+      messages.forEach(function(message) {
+        var roomname = message.roomname;
+        if (roomname && !rooms[roomname]) {
+          // Add the room to the select menu
+          app.renderRoom(roomname);
+
+          // Store that we've added this room already
+          rooms[roomname] = true;
+        }
+      });
+    }
+
+    // Select the menu option
+    app.$roomSelect.val(app.roomname);
+  },
+
+  renderRoom: function(roomname) {
+    // Prevent XSS by escaping with DOM methods
+    var $option = $('<option/>').val(roomname).text(roomname);
+
+    // Add to select
+    app.$roomSelect.append($option);
+  },
+
+  renderMessage: function(message) {
+    if (!message.roomname) {
+      message.roomname = 'lobby';
+    }
+
+    // Create a div to hold the chats
+    var $chat = $('<div class="chat"/>');
+
+    // Add in the message data using DOM methods to avoid XSS
+    // Store the username in the element's data attribute
+    var $username = $('<span class="username"/>');
+    $username.text(message.username + ': ').attr('data-roomname', message.roomname).attr('data-username', message.username).appendTo($chat);
+
+    // Add the friend class
+    if (app.friends[message.username] === true) {
+      $username.addClass('friend');
+    }
+
+    var $message = $('<br><span/>');
+    $message.text(message.text).appendTo($chat);
+
+    // Add the message to the UI
+    app.$chats.append($chat);
+
+  },
+
+  handleUsernameClick: function(event) {
+
+    // Get username from data attribute
+    var username = $(event.target).data('username');
+
+    if (username !== undefined) {
+      // Toggle friend
+      app.friends[username] = !app.friends[username];
+
+      // Escape the username in case it contains a quote
+      var selector = '[data-username="' + username.replace(/"/g, '\\\"') + '"]';
+
+      // Add 'friend' CSS class to all of that user's messages
+      var $usernames = $(selector).toggleClass('friend');
+    }
+  },
+
+  handleRoomChange: function(event) {
+
+    var selectIndex = app.$roomSelect.prop('selectedIndex');
+    // New room is always the first option
+    if (selectIndex === 0) {
+      var roomname = prompt('Enter room name');
+      if (roomname) {
+        // Set as the current room
+        app.roomname = roomname;
+
+        // Add the room to the menu
+        app.renderRoom(roomname);
+
+        // Select the menu option
+        app.$roomSelect.val(roomname);
       }
+    } else {
+      app.startSpinner();
+      // Store as undefined for empty names
+      app.roomname = app.$roomSelect.val();
     }
-  });
+    // Rerender messages
+    app.renderMessages(app.messages);
+  },
 
-  $('#send').on('submit', app.handleSubmit);
-};
+  handleSubmit: function(event) {
+    var message = {
+      username: app.username,
+      text: app.$message.val(),
+      roomname: app.roomname || 'lobby'
+    };
 
-App.prototype.send = function(message) {
-  $.ajax({
-    type: 'POST',
-    url: 'http://127.0.0.1:3000/classes/messages',
-    data: JSON.stringify(message),
-    contentType: 'application/json',
-    success: function(data) {
-      console.log('chatterbox: Message sent');
-    },
-    error: function(data) {
-      console.error('chatterbox: Failed to send message', data);
-    }
-  });
-};
+    app.send(message);
 
-App.prototype.renderMessage = function() {
-  console.log('render message check');
-  const loadingGif = $('<div class="loading">')
-    .html(
-      '<img src="images/loading.gif" alt="a cute kitty loading gif" width="150" height="150">'
-    )
-    .css('text-align', 'center');
+    // Stop the form from submitting
+    event.preventDefault();
+  },
 
-  $('#main').append(loadingGif);
-  let $text = $('#textField').val();
-  let userName = usernameFormatter(window.location.search);
-  let roomName = $(`#roomSelect option:selected`).text();
+  startSpinner: function() {
+    $('.spinner img').show();
+    $('form input[type=submit]').attr('disabled', 'true');
+  },
 
-  var $message = $(`<div class="chat ${roomName} ${userName}">`)
-    .html(`<span class="username">${userName}:</span>
-      <span class="messageText">${$text}</span>`);
-
-  setTimeout(function() {
-    $('#chats').prepend($message);
-  }, 1000);
-
-  //In order to pass all SpecRunner tests,
-  //uncomment line 89, and comment out lines 82-84
-
-  //$('#chats').prepend($message);
-
-  var message = {
-    username: userName,
-    text: $text,
-    roomname: roomName
-  };
-  setTimeout(function() {
-    $('.loading').detach();
-  }, 1000);
-
-  this.send(message);
-};
-
-App.prototype.renderRoom = function(newRoomText) {
-  const newRoom = `<option>${newRoomText}</option>`;
-  $('#roomSelect').append(newRoom);
-};
-
-App.prototype.handleSubmit = function(event) {
-  event.preventDefault();
-  app.renderMessage();
-  $('#textField').val('');
-};
-
-App.prototype.handleUsernameClick = function(e) {
-  let position = e.indexOf(' ', 5);
-  let friend = e.slice(position + 1);
-  console.log(friend);
-  return friend;
-};
-
-App.prototype.clearMessages = function() {
-  $('#chats').empty();
-};
-
-App.prototype.fetch = function() {
-  this.init();
-};
-
-/* INITIALIZE PAGE */
-const app = new App();
-$(document).ready(function() {
-  app.init();
-});
-
-/* BUTTONS & EVENT LISTENERS */
-
-//Room Select functionality
-$(document).on('change', '#roomSelect', function() {
-  var $selected = $(`#roomSelect option:selected`);
-  var $selectedText = $selected.text();
-  const newRoomClass = classFormatter($selectedText);
-  const roomClassFinal = charEscaper(newRoomClass);
-  if ($selectedText === 'Create New Room') {
-    $('.createRoomField').css('visibility', 'visible');
-    $('.createRoomButton').css('visibility', 'visible');
-  } else if ($selectedText === 'All Rooms') {
-    $('.chat').show();
-    var toDo = 'do something';
-  } else {
-    $('.chat').hide();
-    $(`.${roomClassFinal}`).show();
-  }
-});
-
-//Create New Room functionality
-$(document).on('click', '.createRoomButton', function() {
-  const newRoomText = $('.newRoom').val();
-  app.renderRoom(newRoomText);
-  $('.newRoom').val('');
-  $('.createRoomField').css('visibility', 'hidden');
-  $('.createRoomButton').css('visibility', 'hidden');
-});
-
-//Get Friend's Messages functionality
-$(document).on('click', '.chat', function() {
-  let friendClass = app.handleUsernameClick($(this).attr('class'));
-  let friendName = charEscaper(friendClass);
-  $('.chat').hide();
-  $(`.${friendName}`).show();
-});
-
-//Rrefresh Page functionality
-$(document).on('click', '.refreshButton', function() {
-  location.reload();
-});
-
-/* HELPER FUNCTIONS */
-
-//XSS attack test --> returns true if the string is evil
-const xssTest = function(str) {
-  if (str) {
-    return str.includes('<') || str.startsWith('&') || str.startsWith(' ');
-  } else {
-    return false;
+  stopSpinner: function() {
+    $('.spinner img').fadeOut('fast');
+    $('form input[type=submit]').attr('disabled', null);
   }
 };
-
-//Escapes certain characters
-const charEscaper = function(string) {
-  let result;
-  if (string) {
-    result = string;
-  } else {
-    return;
-  }
-  if (result.includes(`'`)) {
-    let position = result.indexOf(`'`);
-    result = result.substr(0, position) + '\\' + result.substr(position);
-  }
-  if (result.includes(`+`)) {
-    let position = result.indexOf(`+`);
-    result = result.substr(0, position) + '\\' + result.substr(position);
-  }
-  if (result.startsWith(`.`)) {
-    result = '\\' + result;
-  }
-  return result;
-};
-
-//Formats username for display
-const usernameFormatter = function(string) {
-  let result = string.slice(10);
-  let regex = /%20/gi;
-  if (result.includes('%20')) {
-    return result.replace(regex, ' ');
-  }
-  return result;
-};
-
-//Formats classes for CSS & HTML
-const classFormatter = function(string) {
-  let result;
-  let regex = / /gi;
-  if (string) {
-    result = string;
-  } else {
-    return;
-  }
-  if (result.includes(' ')) {
-    return result.replace(regex, '_');
-  }
-  return result;
-};
-
-/* DELETE REQUEST */
-// $.ajax({
-//   type: 'DELETE',
-//   url: 'http://parse.rpt.hackreactor.com/chatterbox/classes/messages/<putObjectIDHere>',
-//   contentType: 'application/json',
-//   success: function (data) {
-//     console.log('chatterbox: Message Deleted');
-//   },
-//   error: function (data) {
-//     console.error('chatterbox: Failed to delete message', data);
-//   }
-// });
