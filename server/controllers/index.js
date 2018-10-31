@@ -7,8 +7,7 @@ module.exports = {
         if (error) {
           res.sendStatus(404);
         } else {
-          // res.sendStatus(200);
-          res.end(JSON.stringify(results));
+          res.status(200).json(results);
         }
       });
     },
@@ -17,8 +16,7 @@ module.exports = {
         if (error) {
           res.sendStatus(404);
         } else {
-          res.sendStatus(201);
-          res.end(JSON.stringify(results));
+          res.status(201).json(results);
         }
       });
     }
@@ -29,8 +27,7 @@ module.exports = {
         if (error) {
           res.sendStatus(404);
         } else {
-          res.sendStatus(200);
-          res.end(JSON.stringify(results));
+          res.status(200).json(results);
         }
       });
   },
@@ -39,8 +36,7 @@ module.exports = {
         if (error) {
           res.sendStatus(404);
         } else {
-          res.sendStatus(201);
-          res.end(JSON.stringify(results));
+          res.status(201).json(results);
         }
       })
     }
