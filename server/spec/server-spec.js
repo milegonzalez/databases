@@ -79,10 +79,11 @@ describe('Persistent Node Chat Server', function() {
       // Now query the Node chat server and see if it returns
       // the message we just inserted:
       request('http://127.0.0.1:3000/classes/messages', function(error, response, body) {
-        console.log('BODY CHEEEECK ', body, JSON.stringify(body));
+        // console.log('BODY CHEEEECK ', body, JSON.stringify(body), 'results');
         var messageLog = JSON.parse(body);
-        expect(messageLog[0].MESSAGE_TEXT).to.equal('Women like you can never change!');
-        expect(messageLog[0].ROOMNAME).to.equal('main');
+        // console.log('messageLog', messageLog);
+        expect(messageLog.results[0].MESSAGE_TEXT).to.equal('Women like you can never change!');
+        expect(messageLog.results[0].ROOMNAME).to.equal('main');
         done();
       });
     });

@@ -10,22 +10,22 @@ module.exports = {
           cb(error);
         }
         cb(null, results);
-        console.log(results);
+        // console.log('this is results from models messages, get', results);
       })
     },
 
     post: function (text, cb) {
-      let userName = JSON.stringify(text.username);
-      let textMessage = JSON.stringify(text.message);
-      let roomName = JSON.stringify(text.roomname);
-      const query = `INSERT INTO messages (MESSAGE_TEXT, CREATED_AT, ROOMNAME, username) VALUES (${textMessage}, NOW(), ${roomName}, ${userName})`;
+      let userName = text.username;
+      let textMessage = text.message;
+      let roomName = text.roomname;
+      const query = `INSERT INTO messages (MESSAGE_TEXT, CREATED_AT, ROOMNAME, username) VALUES ('${textMessage}', NOW(), '${roomName}', '${userName}')`;
       const connection = db.connection;
       connection.query(query, (error, results) => {
         if (error) {
           cb(error)
         }
         cb(null, results);
-        console.log('Rows Affected: ', results.affectedRows);
+        // console.log('Rows Affected: ', results.affectedRows);
       });
     }
   },
@@ -51,7 +51,7 @@ module.exports = {
           cb(error)
         }
         cb(null, results);
-        console.log('Rows Affected: ', results.affectedRows);
+        // console.log('Rows Affected: ', results.affectedRows);
       });
     }
   }

@@ -36,7 +36,7 @@ var app = {
 
   send: function(message) {
     app.startSpinner();
-
+    console.log(message)
     // POST the message to the server
     $.ajax({
       url: app.server,
@@ -44,6 +44,8 @@ var app = {
       data: JSON.stringify(message),
       contentType: 'application/json',
       success: function (data) {
+        console.log(data)
+
         // Clear messages input
         app.$message.val('');
 
@@ -62,6 +64,8 @@ var app = {
       type: 'GET',
       // data: { order: '-createdAt' },
       success: function(data) {
+
+        // console.log('data from fetch function', data);
         // Don't bother if we have nothing to work with
         if (!data.results || !data.results.length) { return; }
 
@@ -69,7 +73,9 @@ var app = {
         app.messages = data.results;
 
         // Get the last message
-        var mostRecentMessage = data.results[data.results.length - 1];
+        var mostRecentMessage = data.results[data.results.length - 1].MESSAGE_TEXT;
+        // console.log('this is the most recent message', mostRecentMessage)
+
 
         // Only bother updating the DOM if we have a new message
         if (mostRecentMessage.objectId !== app.lastMessageId) {
@@ -77,6 +83,7 @@ var app = {
           app.renderRoomList(data.results);
 
           // Update the UI with the fetched messages
+          // console.log('data.results', data.results);
           app.renderMessages(data.results, animate);
 
           // Store the ID of the most recent message
@@ -94,11 +101,13 @@ var app = {
   },
 
   renderMessages: function(messages, animate) {
+    // console.log('these are the messages in the render message', messages);
     // Clear existing messages`
     app.clearMessages();
     app.stopSpinner();
     if (Array.isArray(messages)) {
       // Add all fetched messages that are in our current room
+      // console.log(messages, 'these are messages')
       messages
         .filter(function(message) {
           return message.roomname === app.roomname ||
@@ -161,7 +170,7 @@ var app = {
     }
 
     var $message = $('<br><span/>');
-    $message.text(message.text).appendTo($chat);
+    $message.text(message.MESSAGE_TEXT).appendTo($chat);
 
     // Add the message to the UI
     app.$chats.append($chat);
