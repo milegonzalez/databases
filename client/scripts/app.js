@@ -35,8 +35,8 @@ var app = {
   },
 
   send: function(message) {
+    console.log(message , 'this is message inside the function')
     app.startSpinner();
-    console.log(message)
     // POST the message to the server
     $.ajax({
       url: app.server,
@@ -44,7 +44,7 @@ var app = {
       data: JSON.stringify(message),
       contentType: 'application/json',
       success: function (data) {
-        console.log(data)
+        console.log('this is data', data)
 
         // Clear messages input
         app.$message.val('');
@@ -65,7 +65,7 @@ var app = {
       // data: { order: '-createdAt' },
       success: function(data) {
 
-        // console.log('data from fetch function', data);
+        console.log('data from fetch function', data);
         // Don't bother if we have nothing to work with
         if (!data.results || !data.results.length) { return; }
 
@@ -83,7 +83,7 @@ var app = {
           app.renderRoomList(data.results);
 
           // Update the UI with the fetched messages
-          // console.log('data.results', data.results);
+
           app.renderMessages(data.results, animate);
 
           // Store the ID of the most recent message
@@ -107,7 +107,7 @@ var app = {
     app.stopSpinner();
     if (Array.isArray(messages)) {
       // Add all fetched messages that are in our current room
-      // console.log(messages, 'these are messages')
+      console.log(messages, 'these are messages')
       messages
         .filter(function(message) {
           return message.roomname === app.roomname ||
@@ -222,7 +222,7 @@ var app = {
   handleSubmit: function(event) {
     var message = {
       username: app.username,
-      text: app.$message.val(),
+      MESSAGE_TEXT: app.$message.val(),
       roomname: app.roomname || 'lobby'
     };
 
