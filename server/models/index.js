@@ -87,12 +87,16 @@ module.exports = {
       let userName = text.username;
       let textMessage = text.MESSAGE_TEXT;
       let roomName = text.roomname;
-      const queryStr = `INSERT INTO messages (MESSAGE_TEXT, CREATED_AT, \
-                       ROOMNAME, username) VALUES ('${textMessage}',\
-                       NOW(), '${roomName}', '${userName}')`;
+      var param = [textMessage, roomName, userName]
+      // console.log(userName, textMessage, roomName)
+      // const queryStr = `INSERT INTO messages (MESSAGE_TEXT, CREATED_AT, ROOMNAME, username) VALUES ('${textMessage}', NOW(), '${roomName}', '${userName}')`;
+      const queryStr = `INSERT INTO messages (MESSAGE_TEXT, CREATED_AT, ROOMNAME, username) VALUES (?, NOW(), ?, ?)`;
+      console.log(queryStr);
       let connection = db.connection;
-      connection.query(queryStr, (err, results) => {
+      connection.query(queryStr, param, (err, results) => {
+       console.log('err -------> ', err, 'results --------> ', results)
         if (err) {
+
           cb(err, null);
         } else {
           cb(null, results);
@@ -113,8 +117,10 @@ module.exports = {
       })
     },
     post: function (params, cb) {
+      var username = params.username;
+      console.log(username, '<< ---------------------------- username')
       let connection = db.connection;
-      let queryStr = 'INSERT INTO USERS (username) VALUES (?) ';
+      let queryStr = `INSERT INTO USERS (username) VALUES ('${username}')`;
       connection.query(queryStr, params, (err, results) => {
         if (err) {
           cb(err, null);
